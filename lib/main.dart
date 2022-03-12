@@ -1,4 +1,6 @@
+import 'package:filter_dialog/cubit/select_filter_date_cubit.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:syncfusion_flutter_datepicker/datepicker.dart';
 
@@ -46,7 +48,7 @@ class _MyHomePageState extends State<MyHomePage> {
             showDialog<String>(
                 context: context,
                 builder: (BuildContext context) => AlertDialog(
-                  insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+                      insetPadding: const EdgeInsets.symmetric(horizontal: 20),
                       title: Row(
                         children: [
                           const Expanded(
@@ -70,10 +72,13 @@ class _MyHomePageState extends State<MyHomePage> {
                           )
                         ],
                       ),
-                      content: const SizedBox(
-                        height: 450,
+                      content: SizedBox(
+                          height: 450,
                           width: 300,
-                          child: FilterDialogContent()),
+                          child: BlocProvider(
+                            create: (context) => SelectFilterDateCubit(),
+                            child: const FilterDialogContent(),
+                          )),
                     ));
           },
           child: const Text('click here to see filter dialog'),
@@ -91,91 +96,78 @@ class FilterDialogContent extends StatefulWidget {
 }
 
 class _FilterDialogContentState extends State<FilterDialogContent> {
-  String _selectedDate = '';
-  String _dateCount = '';
-  String _range = '';
-  String _rangeCount = '';
+  late SelectFilterDateCubit _selectFilterDateCubit;
+  DateTime startDate = DateTime.utc(
+      DateTime.now().year, DateTime.now().month, DateTime.now().day, 0, 0);
+  DateTime endDate = DateTime.utc(
+      DateTime.now().year, DateTime.now().month, DateTime.now().day + 7, 0, 0);
 
-  /// The method for [DateRangePickerSelectionChanged] callback, which will be
-  /// called whenever a selection changed on the date picker widget.
-  void _onSelectionChanged(DateRangePickerSelectionChangedArgs args) {
-    /// The argument value will return the changed date as [DateTime] when the
-    /// widget [SfDateRangeSelectionMode] set as single.
-    ///
-    /// The argument value will return the changed dates as [List<DateTime>]
-    /// when the widget [SfDateRangeSelectionMode] set as multiple.
-    ///
-    /// The argument value will return the changed range as [PickerDateRange]
-    /// when the widget [SfDateRangeSelectionMode] set as range.
-    ///
-    /// The argument value will return the changed ranges as
-    /// [List<PickerDateRange] when the widget [SfDateRangeSelectionMode] set as
-    /// multi range.
-    setState(() {
-      if (args.value is PickerDateRange) {
-        _range = '${DateFormat('dd/MM/yyyy').format(args.value.startDate)} -'
-            // ignore: lines_longer_than_80_chars
-            ' ${DateFormat('dd/MM/yyyy').format(args.value.endDate ?? args.value.startDate)}';
-      } else if (args.value is DateTime) {
-        _selectedDate = args.value.toString();
-      } else if (args.value is List<DateTime>) {
-        _dateCount = args.value.length.toString();
-      } else {
-        _rangeCount = args.value.length.toString();
-      }
-    });
+  @override
+  void initState() {
+    super.initState();
+    _selectFilterDateCubit = context.read<SelectFilterDateCubit>();
+    _selectFilterDateCubit.selectFilterDate(
+        "${startDate.day}/${startDate.month}/${startDate.year}",
+        "${endDate.day}/${endDate.month}/${endDate.year}");
   }
 
   @override
   Widget build(BuildContext context) {
     const textColor = Color(0xff2B344A);
-    DateTime startDate = DateTime.utc(
-        DateTime.now().year, DateTime.now().month, DateTime.now().day, 0, 0);
-    DateTime endDate = DateTime.utc(
-        DateTime.now().year, DateTime.now().month, DateTime.now().day + 7, 0, 0);
     return Column(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Row(
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  "Start Date",
-                  style: TextStyle(
-                      color: Color(0xff2B344A),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400),
-                ),
-                SizedBox(
-                  height: 5,
-                ),
-                TopDateTextView(date: '',)
-              ],
-            ),
-            const SizedBox(
-              width: 20,
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  "End Date",
-                  style: TextStyle(
-                      color: Color(0xff2B344A),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400),
-                ),
-                SizedBox(
-                  height: 5,
-                ),
-                TopDateTextView(date: '',)
-              ],
-            )
-          ],
+        BlocBuilder<SelectFilterDateCubit, SelectFilterDateState>(
+          builder: (context, state) {
+            if (state is FilterDateOnChanged) {
+              return Row(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Start Date",
+                        style: TextStyle(
+                            color: Color(0xff2B344A),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400),
+                      ),
+                      const SizedBox(
+                        height: 5,
+                      ),
+                      TopDateTextView(
+                        date: state.startDate,
+                      )
+                    ],
+                  ),
+                  const SizedBox(
+                    width: 20,
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "End Date",
+                        style: TextStyle(
+                            color: Color(0xff2B344A),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400),
+                      ),
+                      const SizedBox(
+                        height: 5,
+                      ),
+                      TopDateTextView(
+                        date: state.endDate,
+                      )
+                    ],
+                  )
+                ],
+              );
+            }
+            return const SizedBox();
+          },
         ),
         const SizedBox(
           height: 25,
@@ -184,27 +176,31 @@ class _FilterDialogContentState extends State<FilterDialogContent> {
           onSelectionChanged: _onSelectionChanged,
           selectionMode: DateRangePickerSelectionMode.range,
           initialSelectedRange: PickerDateRange(
-              DateTime.now().subtract(const Duration(days: 4)),
-              DateTime.now().add(const Duration(days: 3))),
+              DateTime.now(), DateTime.now().add(const Duration(days: 7))),
         ),
         Row(
           children: [
             Expanded(
-              child: Container(
-                height: 48,
-                decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(5),
-                    border: Border.all(
-                        color: const Color(0xffE5E5E5),
-                        width: 2.0,
-                        style: BorderStyle.solid)),
-                child: const Center(
-                  child: Text(
-                    "Reset",
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
+              child: InkWell(
+                onTap: (){
+                 //
+                },
+                child: Container(
+                  height: 48,
+                  decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(5),
+                      border: Border.all(
+                          color: const Color(0xffE5E5E5),
+                          width: 2.0,
+                          style: BorderStyle.solid)),
+                  child: const Center(
+                    child: Text(
+                      "Reset",
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
@@ -214,19 +210,27 @@ class _FilterDialogContentState extends State<FilterDialogContent> {
               width: 10,
             ),
             Expanded(
-              child: Container(
-                height: 48,
-                decoration: BoxDecoration(
-                  color: Colors.greenAccent,
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                child: const Center(
-                  child: Text(
-                    "Set Filter",
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
+              child: InkWell(
+                onTap: (){
+                  final currentSate = (_selectFilterDateCubit.state as FilterDateOnChanged);
+                  //now you can access current state and get start date and end date
+                  //currentSate.startDate
+                  //currentSate.endDate
+                },
+                child: Container(
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.greenAccent,
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      "Set Filter",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
@@ -236,6 +240,15 @@ class _FilterDialogContentState extends State<FilterDialogContent> {
         )
       ],
     );
+  }
+
+  void _onSelectionChanged(DateRangePickerSelectionChangedArgs args) {
+    if (args.value is PickerDateRange) {
+      _selectFilterDateCubit.selectFilterDate(
+          DateFormat('dd/MM/yyyy').format(args.value.startDate),
+          DateFormat('dd/MM/yyyy')
+              .format(args.value.endDate ?? args.value.startDate));
+    }
   }
 }
 
@@ -254,7 +267,7 @@ class TopDateTextView extends StatelessWidget {
               color: const Color(0xffE5E5E5),
               width: 2.0,
               style: BorderStyle.solid)),
-      child:  Center(
+      child: Center(
         child: Text(
           date,
           style: const TextStyle(
